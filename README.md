@@ -252,7 +252,7 @@ AppState appStateReducer(AppState state, dynamic action) {
 
 Note that:
 
-1. **We don't mutate the `state`. We create a copy with
+1. **We don't mutate the `state`.** We create a copy with
 `AppState.updateState()`.
 
 2. **We return the previous `state` in the `else` case.** It's
@@ -512,7 +512,7 @@ Reducer<List<Todo>> todosReducer = combineReducers<List<Todo>>([
 
 ### Source Code
 
-`lib/src/reducer.dart`
+`lib/src/reducers.dart`
 ```dart
 import 'package:redux/redux.dart';
 import 'package:redux_dart_basic_tutorial/src/actions.dart';
@@ -692,7 +692,7 @@ Store store = Store<AppState>(appStateReducer, initialState: AppState.emptyState
 ### Next Steps
 
 Before creating a UI for our todo app, we will take a detour
-to see [how the data flows in a Redux application](#data-flow)
+to see [how the data flows in a Redux application](#data-flow).
 
 ## Data Flow
 
