@@ -4,6 +4,7 @@ class Action {
   final String type;
   final dynamic value;
 
+  // For Redux Dev tool
   Map<String, dynamic> toJson() {
     return {'type': type, 'value': value};
   }
@@ -11,6 +12,7 @@ class Action {
 
 enum VisibilityFilter { showAll, showCompleted, showActive }
 
+// For Redux Dev tool
 String filterToJson(VisibilityFilter filter) {
   if (filter == VisibilityFilter.showAll) {
     return 'SHOW_ALL';
@@ -33,4 +35,10 @@ class ToggleTodo extends Action {
 
 class SetVisibilityFilter extends Action {
   SetVisibilityFilter([VisibilityFilter filter]) : super(type: 'SET_VISIBILITY_FILTER', value: filter);
+
+  // For Redux Dev tool
+  @override
+  Map<String, dynamic> toJson() {
+    return {'type': type, 'value': filterToJson(value)};
+  }
 }

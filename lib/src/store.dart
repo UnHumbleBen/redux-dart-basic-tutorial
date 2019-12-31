@@ -1,11 +1,11 @@
-import 'package:over_react/over_react_redux.dart';
-// import 'package:redux/redux.dart';
 import 'package:redux_dart_basic_tutorial/src/reducers.dart';
+
+// import 'package:redux/redux.dart';
+// Store store = Store<AppState>(appStateReducer, initialState: AppState.emptyState());
 
 // Redux dev tool.
 import 'package:redux_dev_tools/redux_dev_tools.dart';
-
-// Store store = Store<AppState>(appStateReducer, initialState: AppState.emptyState());
+import 'package:over_react/over_react_redux.dart';
 
 var store = DevToolsStore<AppState>(
   appStateReducer,

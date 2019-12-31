@@ -11,9 +11,7 @@ part 'add_todo_input.over_react.g.dart';
 UiFactory<AddTodoInputProps> AddTodoInput = _$AddTodoInput;
 
 @Props()
-class _$AddTodoInputProps extends UiProps with ConnectPropsMixin {
-  // dynamic Function(dynamic) dispatch;
-}
+class _$AddTodoInputProps extends UiProps with ConnectPropsMixin {}
 
 @Component2()
 class AddTodoInputComponent extends UiComponent2<AddTodoInputProps> {

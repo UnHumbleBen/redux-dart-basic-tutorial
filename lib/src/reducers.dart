@@ -11,11 +11,13 @@ class Todo {
       : text = text ?? oldTodo.text,
         completed = completed ?? oldTodo.completed;
 
+  // For running demo main function below
   @override
   String toString() {
     return 'Todo {completed: ${completed}, text: "${text}"}';
   }
 
+  // For ReduxDev tool
   Map<String, dynamic> toJson() {
     return {'text': text, 'completed': completed};
   }
@@ -35,11 +37,13 @@ class AppState {
       : visibilityFilter = visibilityFilter ?? oldState.visibilityFilter,
         todos = todos ?? oldState.todos;
 
+  // For running demo main function below
   @override
   String toString() {
     return 'AppState {visibleTodoFilter: ${visibilityFilter}, todos: ${todos}}';
   }
 
+  // For ReduxDev tool
   Map<String, dynamic> toJson() {
     return {'todos': todos, 'visibilityFilter': filterToJson(visibilityFilter)};
   }

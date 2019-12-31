@@ -11,9 +11,9 @@ void main() {
 
   final output = querySelector('#output');
 
-  final app = (ErrorBoundary()((ReduxProvider()..store = store)(
+  final app = (ReduxProvider()..store = store)(
     App()(),
-  )));
+  );
 
   react_dom.render(app, output);
 }

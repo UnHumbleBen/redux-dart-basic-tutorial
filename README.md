@@ -38,11 +38,11 @@ to add typing to the actions passed into dispatch.
 While it can make life easier, this practice is optional as long
 as the reducer receives a valid type and value parameter.
 ```dart
-class Action<T> {
+class Action {
   Action({this.type, this.value});
 
   final String type;
-  final T value;
+  final dynamic value;
 }
 ```
 
@@ -1018,7 +1018,7 @@ class TodoListItemComponent extends UiComponent2<TodoListItemProps> {
     return (Dom.li()
       ..style = {'textDecoration': props.completed ? 'line-through' : 'none'}
       ..onClick = (_) {
-        props.toggleTodo;
+        props.toggleTodo();
       })(
       '${props.text}',
     );
@@ -1052,6 +1052,7 @@ class TodoListComponent extends UiComponent2<TodoListProps> {
         .map((index, todo) => (MapEntry(
             index,
             (TodoListItem()
+              ..key = index
               ..completed = todo.completed
               ..text = todo.text
               ..toggleTodo = () => props.onTodoClick(index))())))
@@ -1084,7 +1085,7 @@ class LinkComponent extends UiComponent2<LinkProps> {
   @override
   dynamic render() {
     return (Dom.button()
-      ..style = {'margin-left': '4px'}
+      ..style = {'marginLeft': '4px'}
       ..disabled = props.active
       ..onClick = (e) {
         e.preventDefault();
@@ -1159,9 +1160,9 @@ use it in its `mapStateToProps`.
 ```dart
 List<Todo> getVisibleTodos(List<Todo> todos, VisibilityFilter filter) {
   if (filter == VisibilityFilter.showCompleted) {
-    return todos.where((todo) => todo.completed);
+    return todos.where((todo) => todo.completed).toList();
   } else if (filter == VisibilityFilter.showActive) {
-    return todos.where((todo) => !todo.completed);
+    return todos.where((todo) => !todo.completed).toList();
   } else {
     return todos;
   }
@@ -1238,7 +1239,7 @@ class LinkComponent extends UiComponent2<LinkProps> {
   @override
   dynamic render() {
     return (Dom.button()
-      ..style = {'margin-left': '4px'}
+      ..style = {'marginLeft': '4px'}
       ..disabled = props.active
       ..onClick = (e) {
         e.preventDefault();
@@ -1254,14 +1255,13 @@ LinkProps mapStateToPropsWithOwnProps(AppState state, LinkProps ownProps) {
 }
 
 LinkProps mapDispatchToPropsWithOwnProps(dynamic Function(dynamic) dispatch, LinkProps ownProps) {
-  return Link()..setVisibilityFilter = dispatch(SetVisibilityFilter(ownProps.filter));
+  return Link()..setVisibilityFilter = () => dispatch(SetVisibilityFilter(ownProps.filter));
 }
 
 UiFactory<LinkProps> ConnectedLink = connect<AppState, LinkProps>(
   mapStateToPropsWithOwnProps: mapStateToPropsWithOwnProps,
   mapDispatchToPropsWithOwnProps: mapDispatchToPropsWithOwnProps,
 )(Link);
-
 ```
 
 `lib/src/components/todo_list.dart`
@@ -1287,24 +1287,27 @@ class _$TodoListProps extends UiProps {
 class TodoListComponent extends UiComponent2<TodoListProps> {
   @override
   dynamic render() {
-    Dom.ul()(props.todos
+    var children = props.todos
         .asMap()
         .map((index, todo) => (MapEntry(
             index,
             (TodoListItem()
+              ..key = index
               ..completed = todo.completed
               ..text = todo.text
               ..toggleTodo = () => props.onTodoClick(index))())))
         .values
-        .toList());
+        .toList();
+
+    return Dom.ul()(children);
   }
 }
 
 List<Todo> getVisibleTodos(List<Todo> todos, VisibilityFilter filter) {
   if (filter == VisibilityFilter.showCompleted) {
-    return todos.where((todo) => todo.completed);
+    return todos.where((todo) => todo.completed).toList();
   } else if (filter == VisibilityFilter.showActive) {
-    return todos.where((todo) => !todo.completed);
+    return todos.where((todo) => !todo.completed).toList();
   } else {
     return todos;
   }
@@ -1331,11 +1334,17 @@ UiFactory<TodoListProps> ConnectedTodoList = connect<AppState, TodoListProps>(
 Recall as [mentioned previously](#designing-other-components), both the presentation and logic
 `AddTodoInput` component are mixed into a single definition,
 with `ConnectedAddTodoInput` providing a thin wrapper.
+Because we need access to `props.dispatch` function,
+we need to add the `ConnectPropsMixin` to the prop
+class.
 
 ```dart
+import 'dart:html';
+
 import 'package:over_react/over_react.dart';
 import 'package:over_react/over_react_redux.dart';
 import 'package:redux_dart_basic_tutorial/src/actions.dart';
+import 'package:redux_dart_basic_tutorial/src/reducers.dart';
 
 part 'add_todo_input.over_react.g.dart';
 
@@ -1343,38 +1352,37 @@ part 'add_todo_input.over_react.g.dart';
 UiFactory<AddTodoInputProps> AddTodoInput = _$AddTodoInput;
 
 @Props()
-class _$AddTodoInputProps extends UiProps {
-  dynamic Function(dynamic) dispatch;
+class _$AddTodoInputProps extends UiProps with ConnectPropsMixin {
+  // dynamic Function(dynamic) dispatch;
 }
 
 @Component2()
 class AddTodoInputComponent extends UiComponent2<AddTodoInputProps> {
-  DomProps input = Dom.input();
-
   @override
   dynamic render() {
+    var input;
     return (Dom.div()(
       (Dom.form()
-        ..onSubmit = (e) {
-          e.preventDefault();
-          if (!input.value.trim()) {
-            return;
-          }
-          props.dispatch(AddTodo(input.value));
-          input.value = '';
-        })(
-        (Dom.input()
-          ..ref = (DomProps node) {
-            input = node;
-          })((Dom.button()..type = 'submit')(
-          'Add Todo',
-        )),
-      ),
+            ..onSubmit = (e) {
+              e.preventDefault();
+              if (input.value.trim() == '') {
+                return;
+              }
+              props.dispatch(AddTodo(input.value));
+              input.value = '';
+            })(
+          (Dom.input()
+            ..ref = (InputElement node) {
+              input = node;
+            })(),
+          (Dom.button()..type = 'submit')(
+            'Add Todo',
+          )),
     ));
   }
 }
 
-UiFactory<AddTodoInputProps> ConnectedAddTodoInput = connect()(AddTodoInput);
+UiFactory<AddTodoInputProps> ConnectedAddTodoInput = connect<AppState, AddTodoInputProps>()(AddTodoInput);
 ```
 
 If you are unfamiliar with the `ref` attribute, please
@@ -1403,7 +1411,7 @@ class AppComponent extends UiComponent2<AppProps> {
   @override
   dynamic render() {
     return Dom.div()(
-      AddTodoInput()(),
+      ConnectedAddTodoInput()(),
       ConnectedTodoList()(),
       Footer()(),
     );
@@ -1411,6 +1419,17 @@ class AppComponent extends UiComponent2<AppProps> {
 }
 ```
 
+#### Creating the package
+
+Expose the `App` component and Redux `store`.
+
+`lib/redux_dart_basic_tutorial.dart`
+```dart
+library redux_dart_basic_tutorial;
+
+export 'package:redux_dart_basic_tutorial/src/components/app.dart' show App;
+export 'package:redux_dart_basic_tutorial/src/store.dart' show store;
+```
 ### Passing the Store
 
 All container components need access to the Redux store so they
@@ -1426,3 +1445,412 @@ to [magically](https://reactjs.org/docs/context.html) make the store available t
 components in the application without passing it explicitly.
 You only need to use it once when you render
 the root component:
+
+`web/main.dart`
+```dart
+import 'dart:html';
+
+import 'package:over_react/over_react.dart';
+import 'package:over_react/over_react_redux.dart';
+import 'package:over_react/react_dom.dart' as react_dom;
+
+import 'package:redux_dart_basic_tutorial/redux_dart_basic_tutorial.dart';
+
+void main() {
+  setClientConfiguration();
+
+  final output = querySelector('#output');
+
+  final app = (ReduxProvider()..store = store)(
+    App()(),
+  );
+
+  react_dom.render(app, output);
+}
+```
+
+### Next Steps
+
+Read the [complete source code for this tutorial](#example-todo-list) to
+better internalize the knowledge you have gained. Then, head
+straight to the [advanced tutorial](https://github.com/johnpryan/redux.dart/blob/master/doc/async.md)
+to learn how to handle network requests and routing!
+
+You should also take some time to [**read through the
+OverReact Redux docs**](https://github.com/Workiva/over_react/blob/master/doc/over_react_redux_documentation.md)
+to get a better understanding of how to use OverReact and
+Redux together.
+
+## Example: Todo List
+
+This is the complete source code of the tiny todo app we built
+during the [basics tutorial](#basics).
+
+### Entry Point
+
+`web/main.dart`
+```dart
+import 'dart:html';
+
+import 'package:over_react/over_react.dart';
+import 'package:over_react/over_react_redux.dart';
+import 'package:over_react/react_dom.dart' as react_dom;
+
+import 'package:redux_dart_basic_tutorial/redux_dart_basic_tutorial.dart';
+
+void main() {
+  setClientConfiguration();
+
+  final output = querySelector('#output');
+
+  final app = (ReduxProvider()..store = store)(
+    App()(),
+  );
+
+  react_dom.render(app, output);
+}
+```
+
+### Actions
+
+`lib/src/actions.dart`
+```dart
+class Action {
+  Action({this.type, this.value});
+
+  final String type;
+  final dynamic value;
+}
+
+enum VisibilityFilter { showAll, showCompleted, showActive }
+
+class AddTodo extends Action {
+  AddTodo([String text]) : super(type: 'ADD_TODO', value: text);
+}
+
+class ToggleTodo extends Action {
+  ToggleTodo([int index]) : super(type: 'TOGGLE_TODO', value: index);
+}
+
+class SetVisibilityFilter extends Action {
+  SetVisibilityFilter([VisibilityFilter filter]) : super(type: 'SET_VISIBILITY_FILTER', value: filter);
+}
+```
+
+### Reducers
+
+`lib/src/reducers.dart`
+```dart
+import 'package:redux/redux.dart';
+import 'package:redux_dart_basic_tutorial/src/actions.dart';
+
+class Todo {
+  String text;
+  bool completed;
+
+  Todo(this.text) : completed = false;
+
+  Todo.updateState(Todo oldTodo, {String text, bool completed})
+      : text = text ?? oldTodo.text,
+        completed = completed ?? oldTodo.completed;
+}
+
+class AppState {
+  VisibilityFilter visibilityFilter;
+  List<Todo> todos;
+
+  AppState({this.visibilityFilter, this.todos});
+
+  AppState.emptyState()
+      : visibilityFilter = VisibilityFilter.showAll,
+        todos = [];
+
+  AppState.updateState(AppState oldState, {VisibilityFilter visibilityFilter, List<Todo> todos})
+      : visibilityFilter = visibilityFilter ?? oldState.visibilityFilter,
+        todos = todos ?? oldState.todos;
+}
+
+List<Todo> addTodoReducer(List<Todo> todos, AddTodo action) {
+  return [...todos, Todo(action.value)];
+}
+
+List<Todo> toggleTodoReducer(List<Todo> todos, ToggleTodo action) {
+  return todos
+      .asMap()
+      .map((index, todo) {
+        if (index == action.value) {
+          return MapEntry(index, Todo.updateState(todo, completed: !todo.completed));
+        }
+        return MapEntry(index, todo);
+      })
+      .values
+      .toList();
+}
+
+Reducer<List<Todo>> todosReducer = combineReducers<List<Todo>>([
+  TypedReducer<List<Todo>, AddTodo>(addTodoReducer),
+  TypedReducer<List<Todo>, ToggleTodo>(toggleTodoReducer),
+]);
+
+VisibilityFilter visibilityFilterReducer(VisibilityFilter visibilityFilter, dynamic action) {
+  if (action is SetVisibilityFilter) {
+    return action.value;
+  } else {
+    return visibilityFilter;
+  }
+}
+
+AppState appStateReducer(AppState state, dynamic action) => AppState(
+      visibilityFilter: visibilityFilterReducer(state.visibilityFilter, action),
+      todos: todosReducer(state.todos, action),
+    );
+```
+
+### Components
+`lib/src/components/todo_list_item.dart`
+```dart
+import 'package:over_react/over_react.dart';
+
+part 'todo_list_item.over_react.g.dart';
+
+@Factory()
+UiFactory<TodoListItemProps> TodoListItem = _$TodoListItem;
+
+@Props()
+class _$TodoListItemProps extends UiProps {
+  void Function() toggleTodo;
+  bool completed;
+  String text;
+}
+
+@Component2()
+class TodoListItemComponent extends UiComponent2<TodoListItemProps> {
+  @override
+  dynamic render() {
+    return (Dom.li()
+      ..style = {'textDecoration': props.completed ? 'line-through' : 'none'}
+      ..onClick = (_) {
+        props.toggleTodo();
+      })(
+      '${props.text}',
+    );
+  }
+}
+```
+`lib/src/components/todo_list.dart`
+```dart
+import 'package:over_react/over_react.dart';
+import 'package:over_react/over_react_redux.dart';
+import 'package:redux_dart_basic_tutorial/src/actions.dart';
+import 'package:redux_dart_basic_tutorial/src/components/todo_list_item.dart';
+import 'package:redux_dart_basic_tutorial/src/reducers.dart';
+
+part 'todo_list.over_react.g.dart';
+
+@Factory()
+UiFactory<TodoListProps> TodoList = _$TodoList;
+
+@Props()
+class _$TodoListProps extends UiProps {
+  List<Todo> todos;
+  void Function(int index) onTodoClick;
+}
+
+@Component2()
+class TodoListComponent extends UiComponent2<TodoListProps> {
+  @override
+  dynamic render() {
+    var children = props.todos
+        .asMap()
+        .map((index, todo) => (MapEntry(
+            index,
+            (TodoListItem()
+              ..key = index
+              ..completed = todo.completed
+              ..text = todo.text
+              ..toggleTodo = () => props.onTodoClick(index))())))
+        .values
+        .toList();
+
+    return Dom.ul()(children);
+  }
+}
+
+List<Todo> getVisibleTodos(List<Todo> todos, VisibilityFilter filter) {
+  if (filter == VisibilityFilter.showCompleted) {
+    return todos.where((todo) => todo.completed).toList();
+  } else if (filter == VisibilityFilter.showActive) {
+    return todos.where((todo) => !todo.completed).toList();
+  } else {
+    return todos;
+  }
+}
+
+TodoListProps mapStateToProps(AppState state) {
+  return TodoList()..todos = getVisibleTodos(state.todos, state.visibilityFilter);
+}
+
+TodoListProps mapDispatchToProps(dynamic Function(dynamic) dispatch) {
+  return TodoList()..onTodoClick = (index) => dispatch(ToggleTodo(index));
+}
+
+UiFactory<TodoListProps> ConnectedTodoList = connect<AppState, TodoListProps>(
+  mapDispatchToProps: mapDispatchToProps,
+  mapStateToProps: mapStateToProps,
+)(TodoList);
+
+```
+`lib/src/components/link.dart`
+```dart
+import 'package:over_react/over_react.dart';
+import 'package:over_react/over_react_redux.dart';
+import 'package:redux_dart_basic_tutorial/src/actions.dart';
+import 'package:redux_dart_basic_tutorial/src/reducers.dart';
+
+part 'link.over_react.g.dart';
+
+@Factory()
+UiFactory<LinkProps> Link = _$Link;
+
+@Props()
+class _$LinkProps extends UiProps {
+  bool active;
+  VisibilityFilter filter;
+  void Function() setVisibilityFilter;
+}
+
+@Component2()
+class LinkComponent extends UiComponent2<LinkProps> {
+  @override
+  dynamic render() {
+    return (Dom.button()
+      ..style = {'marginLeft': '4px'}
+      ..disabled = props.active
+      ..onClick = (e) {
+        e.preventDefault();
+        props.setVisibilityFilter();
+      })(
+      props.children,
+    );
+  }
+}
+
+LinkProps mapStateToPropsWithOwnProps(AppState state, LinkProps ownProps) {
+  return Link()..active = state.visibilityFilter == ownProps.filter;
+}
+
+LinkProps mapDispatchToPropsWithOwnProps(dynamic Function(dynamic) dispatch, LinkProps ownProps) {
+  return Link()..setVisibilityFilter = () => dispatch(SetVisibilityFilter(ownProps.filter));
+}
+
+UiFactory<LinkProps> ConnectedLink = connect<AppState, LinkProps>(
+  mapStateToPropsWithOwnProps: mapStateToPropsWithOwnProps,
+  mapDispatchToPropsWithOwnProps: mapDispatchToPropsWithOwnProps,
+)(Link);
+```
+
+`lib/src/components/footer.dart`
+```dart
+import 'package:over_react/over_react.dart';
+import 'package:redux_dart_basic_tutorial/src/actions.dart';
+import 'package:redux_dart_basic_tutorial/src/components/link.dart';
+
+part 'footer.over_react.g.dart';
+
+@Factory()
+UiFactory<FooterProps> Footer = _$Footer;
+
+@Props()
+class _$FooterProps extends UiProps {}
+
+@Component2()
+class FooterComponent extends UiComponent2<FooterProps> {
+  @override
+  dynamic render() {
+    return Dom.p()(
+      'Show: ',
+      (ConnectedLink()..filter = VisibilityFilter.showAll)(
+        'All',
+      ),
+      (ConnectedLink()..filter = VisibilityFilter.showActive)(
+        'Active',
+      ),
+      (ConnectedLink()..filter = VisibilityFilter.showCompleted)(
+        'Completed',
+      ),
+    );
+  }
+}
+
+```
+`lib/src/components/add_todo_input.dart`
+```dart
+import 'dart:html';
+
+import 'package:over_react/over_react.dart';
+import 'package:over_react/over_react_redux.dart';
+import 'package:redux_dart_basic_tutorial/src/actions.dart';
+import 'package:redux_dart_basic_tutorial/src/reducers.dart';
+
+part 'add_todo_input.over_react.g.dart';
+
+@Factory()
+UiFactory<AddTodoInputProps> AddTodoInput = _$AddTodoInput;
+
+@Props()
+class _$AddTodoInputProps extends UiProps with ConnectPropsMixin {}
+
+@Component2()
+class AddTodoInputComponent extends UiComponent2<AddTodoInputProps> {
+  @override
+  dynamic render() {
+    var input;
+    return (Dom.div()(
+      (Dom.form()
+            ..onSubmit = (e) {
+              e.preventDefault();
+              if (input.value.trim() == '') {
+                return;
+              }
+              props.dispatch(AddTodo(input.value));
+              input.value = '';
+            })(
+          (Dom.input()
+            ..ref = (InputElement node) {
+              input = node;
+            })(),
+          (Dom.button()..type = 'submit')(
+            'Add Todo',
+          )),
+    ));
+  }
+}
+
+UiFactory<AddTodoInputProps> ConnectedAddTodoInput = connect<AppState, AddTodoInputProps>()(AddTodoInput);
+```
+`lib/src/components/app.dart`
+```dart
+import 'package:over_react/over_react.dart';
+import 'package:redux_dart_basic_tutorial/src/components/add_todo_input.dart';
+import 'package:redux_dart_basic_tutorial/src/components/footer.dart';
+import 'package:redux_dart_basic_tutorial/src/components/todo_list.dart';
+part 'app.over_react.g.dart';
+
+@Factory()
+UiFactory<AppProps> App = _$App;
+
+@Props()
+class _$AppProps extends UiProps {}
+
+@Component2()
+class AppComponent extends UiComponent2<AppProps> {
+  @override
+  dynamic render() {
+    return Dom.div()(
+      ConnectedAddTodoInput()(),
+      ConnectedTodoList()(),
+      Footer()(),
+    );
+  }
+}
+```
